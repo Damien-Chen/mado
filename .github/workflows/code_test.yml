@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - '*'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  address-sanitizer:
+    name: 'Address sanitizer'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies
+        run: |
+            sudo apt-get install -q -y
+            sudo apt install libsdl2-dev libjpeg-dev libpng-dev
+
+      - name: Build with AddressSanitizer
+        env:
+          ASAN_OPTIONS: "detect_stack_use_after_return=0:detect_stack_use_after_scope=0:detect_leaks=0" # Focus on heap-buffer-overflow
+        run: |
+            tools/kconfig/defconfig.py --kconfig configs/Kconfig configs/defconfig
+            tools/kconfig/genconfig.py configs/Kconfig
+            make CFLAGS="$CFLAGS -fsanitize=address"
+
+  thread-sanitizer:
+    name: 'Thread sanitizer'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -q -y libsdl2-dev libjpeg-dev libpng-dev
+
+      - name: Build with ThreadSanitizer
+        env:
+          TSAN_OPTIONS: "detect_deadlocks=1" # You can adjust these options as needed
+        run: |
+          tools/kconfig/defconfig.py --kconfig configs/Kconfig configs/defconfig
+          tools/kconfig/genconfig.py configs/Kconfig
+          make CFLAGS="$CFLAGS -fsanitize=thread"
